@@ -559,7 +559,10 @@
             </div>
             <div style="grid-column: span 2;">
               <label class="field-label" for="txtGithubToken">GitHub Personal Access Token (Fine-grained PAT: Contents Read &amp; Write)</label>
-              <input id="txtGithubToken" type="password" class="mono" placeholder="github_pat_... hoặc ghp_..." />
+              <div style="display:flex; gap:6px;">
+                <input id="txtGithubToken" type="password" class="mono" autocomplete="new-password" spellcheck="false" placeholder="github_pat_... hoặc ghp_..." style="flex:1;" />
+                <button type="button" id="btnToggleTokenVis" class="btn-sm" title="Hiện/ẩn token để kiểm tra">👁 Hiện</button>
+              </div>
             </div>
           </div>
 
@@ -1287,7 +1290,11 @@
             const existing = await headResp.json();
             sha = existing.sha || null;
           } else if (headResp.status !== 404) {
-            throw new Error(`Không đọc được trạng thái file trên GitHub (HTTP ${headResp.status}).`);
+            const errDetail = await headResp.text().catch(() => "");
+            const hint = headResp.status === 401
+              ? " — Token GitHub sai, bị thiếu ký tự hoặc bị trình duyệt tự điền đè! Hãy bấm '👁 Hiện' kiểm tra lại chuỗi github_pat_... (93 ký tự)."
+              : "";
+            throw new Error(`Không đọc được trạng thái file trên GitHub (HTTP ${headResp.status})${hint} ${errDetail}`);
           }
 
           const body = {
@@ -1432,6 +1439,12 @@
         };
 
         el("selGithubMode").onchange = updateGithubModeUI;
+        el("btnToggleTokenVis").onclick = () => {
+          const inp = el("txtGithubToken");
+          const show = inp.type === "password";
+          inp.type = show ? "text" : "password";
+          el("btnToggleTokenVis").textContent = show ? "🙈 Ẩn" : "👁 Hiện";
+        };
         ["txtRepoOwnerRepo", "txtRepoBranch", "txtRepoFilePath", "txtGistId", "txtGistFilename"].forEach((id) => {
           el(id).addEventListener("input", updateGithubModeUI);
         });
