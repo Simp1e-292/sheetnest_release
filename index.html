@@ -529,6 +529,52 @@
       </div>
     </section>
 
+    <!-- 3B. Shared Learned Library Merge & Sync (shared_library.json) -->
+    <section class="card">
+      <details id="sharedLibDetails" class="collapse-card">
+        <summary>
+          <span>🧠 Quản lý &amp; Gộp Dữ liệu học chung toàn xưởng (<span id="sharedLibCountBadge">0 mẫu</span>)</span>
+          <span class="muted-note">Bấm để mở rộng / thu gọn</span>
+        </summary>
+        <div style="margin-top:12px;">
+          <p class="muted-note" style="margin:0 0 10px;">
+            Gộp file <code>.json</code> xuất từ các máy xưởng (<code>Cài đặt → Xuất dữ liệu đã học</code>), lọc trùng, duyệt bỏ mẫu chọn nhầm rồi đẩy lên GitHub (<code>shared_library.json</code>) để <b>tất cả máy xưởng tự đồng bộ ngay</b> mà không cần cài lại phần mềm.
+          </p>
+          <div class="pill-row" style="margin-bottom:10px;">
+            <button type="button" id="btnPullSharedLib" class="btn-sm btn-accent">📥 Tải thư viện chung từ GitHub</button>
+            <button type="button" id="btnMergeWorkshopFiles" class="btn-sm btn-amber">📂 Chọn file .json từ máy xưởng để GỘP</button>
+            <input id="sharedLibFilesInput" type="file" accept=".json" multiple style="display:none;" />
+            <button type="button" id="btnPushSharedLib" class="btn-sm btn-green">🚀 Đẩy thư viện học lên GitHub (Toàn xưởng)</button>
+            <button type="button" id="btnDownloadSharedLib" class="btn-sm">💾 Tải file shared_library.json</button>
+          </div>
+          <div id="sharedLibSummary" class="muted-note" style="margin-bottom:8px;">
+            Chưa tải thư viện chung. Hãy bấm "📥 Tải thư viện chung từ GitHub" trước khi gộp thêm file mới.
+          </div>
+          <div style="margin-bottom:10px;">
+            <input id="txtSharedLibSearch" type="text" placeholder="🔍 Lọc theo tên nhóm (Khung, Cánh, Nẹp...), độ dày (0.8 / 1.2), kích thước, tên máy..." />
+          </div>
+          <div class="machine-table-wrap" style="max-height:360px; overflow-y:auto;">
+            <table class="machine-table">
+              <thead>
+                <tr>
+                  <th>Nhóm chi tiết</th>
+                  <th>Vật liệu</th>
+                  <th>Kích thước S × L (mm)</th>
+                  <th>Chấn / Lỗ</th>
+                  <th>Nguồn</th>
+                  <th style="text-align:right;">Duyệt</th>
+                </tr>
+              </thead>
+              <tbody id="sharedLibTableBody"></tbody>
+            </table>
+          </div>
+          <div id="emptySharedLibMsg" class="muted-note" style="text-align:center; padding:14px 0;">
+            Chưa có mẫu học nào trong danh sách xem trước.
+          </div>
+        </div>
+      </details>
+    </section>
+
     <!-- 4. ECDSA Key & GitHub Sync Configuration (Collapsible) -->
     <section class="card">
       <details id="cfgDetails" class="collapse-card" open>
@@ -632,7 +678,10 @@
         filter: "all",
         search: "",
         lastRepoSha: null,
-        sessionPin: null
+        sessionPin: null,
+        sharedLibOverrides: [],
+        sharedLibNewIds: new Set(),
+        sharedLibSearch: ""
       };
 
       const el = (id) => document.getElementById(id);
@@ -1579,6 +1628,258 @@
             btn.textContent = prevText;
           }
         };
+
+        // --- Shared Learned Library (shared_library.json) ---
+        el("txtSharedLibSearch").addEventListener("input", () => {
+          state.sharedLibSearch = el("txtSharedLibSearch").value.trim().toLowerCase();
+          renderSharedLibrary();
+        });
+
+        el("btnPullSharedLib").onclick = async () => {
+          const btn = el("btnPullSharedLib");
+          btn.disabled = true;
+          try {
+            await pullSharedLibraryFromGithub();
+          } catch (err) {
+            showToast("Lỗi tải thư viện chung: " + err.message, "error");
+          } finally {
+            btn.disabled = false;
+          }
+        };
+
+        el("btnMergeWorkshopFiles").onclick = () => el("sharedLibFilesInput").click();
+        el("sharedLibFilesInput").onchange = async (e) => {
+          const files = Array.from(e.target.files || []);
+          e.target.value = "";
+          if (files.length === 0) return;
+          try {
+            await mergeWorkshopLibraryFiles(files);
+          } catch (err) {
+            showToast("Lỗi gộp file dữ liệu học: " + err.message, "error");
+          }
+        };
+
+        el("btnDownloadSharedLib").onclick = () => {
+          const payload = buildSharedLibraryPayload();
+          const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "shared_library.json";
+          a.click();
+          URL.revokeObjectURL(a.href);
+          showToast(`💾 Đã tải shared_library.json (${payload.Overrides.length} mẫu).`, "success");
+        };
+
+        el("btnPushSharedLib").onclick = async () => {
+          const btn = el("btnPushSharedLib");
+          btn.disabled = true;
+          const prevText = btn.textContent;
+          btn.textContent = "⏳ Đang đẩy thư viện học...";
+          try {
+            await pushSharedLibraryToGithub();
+          } catch (err) {
+            showToast("Lỗi đẩy thư viện học: " + err.message, "error");
+          } finally {
+            btn.disabled = false;
+            btn.textContent = prevText;
+          }
+        };
+
+        el("sharedLibTableBody").addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-lib-del]");
+          if (!btn) return;
+          const idx = Number(btn.getAttribute("data-lib-del"));
+          if (!Number.isInteger(idx) || idx < 0 || idx >= state.sharedLibOverrides.length) return;
+          const item = state.sharedLibOverrides[idx];
+          const label = `${item.FamilyName || "Mẫu"} (${item.WidthS} × ${item.SampleLengthL} mm)`;
+          if (!confirm(`Xóa mẫu "${label}" khỏi thư viện dùng chung?`)) return;
+          if (item.Id) state.sharedLibNewIds.delete(item.Id);
+          state.sharedLibOverrides.splice(idx, 1);
+          renderSharedLibrary();
+          showToast(`Đã bỏ mẫu "${label}". Nhớ bấm "🚀 Đẩy thư viện học lên GitHub" để lưu.`, "info");
+        });
+      }
+
+      function isSameSharedSig(a, b) {
+        if (!a || !b) return false;
+        if (a.Id && b.Id && String(a.Id).toLowerCase() === String(b.Id).toLowerCase()) return true;
+        const holesA = Array.isArray(a.HoleSignatures) ? a.HoleSignatures.length : 0;
+        const holesB = Array.isArray(b.HoleSignatures) ? b.HoleSignatures.length : 0;
+        return a.Category === b.Category &&
+          String(a.MaterialKey || "").toLowerCase() === String(b.MaterialKey || "").toLowerCase() &&
+          Math.abs(Number(a.WidthS || 0) - Number(b.WidthS || 0)) <= 0.5 &&
+          Math.abs(Number(a.SampleLengthL || 0) - Number(b.SampleLengthL || 0)) <= 2.0 &&
+          Number(a.BendCount || 0) === Number(b.BendCount || 0) &&
+          holesA === holesB;
+      }
+
+      function buildSharedLibraryPayload() {
+        return {
+          Version: 1,
+          UpdatedAtUtc: new Date().toISOString(),
+          Overrides: state.sharedLibOverrides.map((o) => Object.assign({}, o, { IsUserOverride: true }))
+        };
+      }
+
+      function renderSharedLibrary() {
+        const list = state.sharedLibOverrides || [];
+        el("sharedLibCountBadge").textContent = `${list.length} mẫu`;
+        const q = state.sharedLibSearch || "";
+        const filtered = list
+          .map((item, idx) => ({ item, idx }))
+          .filter(({ item }) => {
+            if (!q) return true;
+            const hay = `${item.FamilyName || ""} ${item.MaterialKey || ""} ${item.SubLabel || ""} ${item.WidthS || ""} ${item.SampleLengthL || ""} ${item.SourceMachine || ""} ${item.Id || ""}`.toLowerCase();
+            return hay.includes(q);
+          });
+
+        const tbody = el("sharedLibTableBody");
+        el("emptySharedLibMsg").style.display = filtered.length === 0 ? "block" : "none";
+        tbody.innerHTML = filtered.map(({ item, idx }) => {
+          const isNew = item.Id && state.sharedLibNewIds.has(item.Id);
+          const holesCount = Array.isArray(item.HoleSignatures) ? item.HoleSignatures.length : 0;
+          const src = item.SourceMachine ? escapeHtml(item.SourceMachine) : `<span style="color:var(--muted);">${escapeHtml((item.Id || "").slice(0, 10))}</span>`;
+          return `
+            <tr>
+              <td>
+                <strong>${escapeHtml(item.FamilyName || "(Chưa đặt tên)")}</strong>
+                ${isNew ? '<span class="badge badge-cyan" style="margin-left:6px;">MỚI</span>' : ""}
+              </td>
+              <td><span class="badge badge-amber">${escapeHtml(item.MaterialKey || (item.ThicknessMm ? item.ThicknessMm + "mm" : "—"))}</span></td>
+              <td class="mono">${Number(item.WidthS || 0).toFixed(1)} × ${Number(item.SampleLengthL || 0).toFixed(1)}</td>
+              <td style="font-size:12px; color:var(--muted);">${Number(item.BendCount || 0)} chấn / ${holesCount} nhóm lỗ</td>
+              <td style="font-size:12px;">${src}</td>
+              <td style="text-align:right;">
+                <button type="button" class="btn-sm btn-red" data-lib-del="${idx}">🗑 Xóa</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      async function pullSharedLibraryFromGithub() {
+        const repo = el("txtRepoOwnerRepo").value.trim();
+        const branch = (el("txtRepoBranch").value || "main").trim();
+        const token = el("txtGithubToken").value.trim();
+        if (!repo) throw new Error("Vui lòng nhập Repository (owner/repo) trong phần Cấu hình.");
+
+        const apiUrl = `https://api.github.com/repos/${repo}/contents/shared_library.json?ref=${encodeURIComponent(branch)}&t=${Date.now()}`;
+        const headers = { "Accept": "application/vnd.github.raw+json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const resp = await fetch(apiUrl, { headers, cache: "no-store" });
+        if (resp.status === 404) {
+          state.sharedLibOverrides = [];
+          state.sharedLibNewIds = new Set();
+          renderSharedLibrary();
+          el("sharedLibSummary").textContent = "Chưa có file shared_library.json trên GitHub (0 mẫu). Bạn có thể chọn file .json từ máy để tạo mới và đẩy lên.";
+          showToast("Chưa có shared_library.json trên GitHub — sẵn sàng tạo mới.", "info");
+          return;
+        }
+        if (!resp.ok) {
+          throw new Error(`Không tải được shared_library.json (HTTP ${resp.status}).`);
+        }
+
+        const parsed = await resp.json();
+        const overrides = Array.isArray(parsed.Overrides) ? parsed.Overrides : (Array.isArray(parsed.overrides) ? parsed.overrides : []);
+        state.sharedLibOverrides = overrides;
+        state.sharedLibNewIds = new Set();
+        renderSharedLibrary();
+        const updatedText = parsed.UpdatedAtUtc ? ` (cập nhật ${new Date(parsed.UpdatedAtUtc).toLocaleString("vi-VN")})` : "";
+        el("sharedLibSummary").textContent = `Đang có ${overrides.length} mẫu dùng chung trên GitHub${updatedText}.`;
+        showToast(`📥 Đã tải ${overrides.length} mẫu thư viện chung từ GitHub.`, "success");
+      }
+
+      async function mergeWorkshopLibraryFiles(files) {
+        let added = 0;
+        let skipped = 0;
+        let conflicts = 0;
+
+        for (const file of files) {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          const arr = Array.isArray(parsed.Overrides) ? parsed.Overrides : (Array.isArray(parsed.overrides) ? parsed.overrides : null);
+          if (!arr) {
+            throw new Error(`File "${file.name}" không đúng định dạng dữ liệu học SheetNest.`);
+          }
+          const fileMachine = parsed.SourceMachine || file.name.replace(/\.json$/i, "");
+
+          for (const rawItem of arr) {
+            if (!rawItem) continue;
+            const item = Object.assign({}, rawItem, { IsUserOverride: true });
+            if (!item.SourceMachine) item.SourceMachine = fileMachine;
+            if (!item.Id) item.Id = `USR_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+
+            if (state.sharedLibOverrides.some((ex) => isSameSharedSig(ex, item))) {
+              skipped++;
+              continue;
+            }
+
+            const sameGeomDiffCat = state.sharedLibOverrides.some((ex) =>
+              Math.abs(Number(ex.WidthS || 0) - Number(item.WidthS || 0)) <= 0.5 &&
+              Math.abs(Number(ex.SampleLengthL || 0) - Number(item.SampleLengthL || 0)) <= 2.0 &&
+              Number(ex.BendCount || 0) === Number(item.BendCount || 0) &&
+              ex.Category !== item.Category);
+            if (sameGeomDiffCat) conflicts++;
+
+            state.sharedLibOverrides.unshift(item);
+            state.sharedLibNewIds.add(item.Id);
+            added++;
+          }
+        }
+
+        renderSharedLibrary();
+        const conflictNote = conflicts > 0 ? ` — ⚠ Có ${conflicts} mẫu trùng kích thước nhưng khác nhóm, hãy kiểm tra các dòng có nhãn MỚI!` : "";
+        el("sharedLibSummary").textContent = `Đã gộp ${files.length} file: +${added} mẫu mới (đã lọc bỏ ${skipped} mẫu trùng). Tổng hiện tại: ${state.sharedLibOverrides.length} mẫu.${conflictNote}`;
+        showToast(`🧠 Đã gộp +${added} mẫu mới (lọc trùng ${skipped}). Kiểm tra rồi bấm "🚀 Đẩy thư viện học lên GitHub"!`, added > 0 ? "success" : "info");
+      }
+
+      async function pushSharedLibraryToGithub() {
+        const token = el("txtGithubToken").value.trim();
+        const repo = el("txtRepoOwnerRepo").value.trim();
+        const branch = (el("txtRepoBranch").value || "main").trim();
+        if (!token) throw new Error("Vui lòng nhập GitHub Personal Access Token để đẩy file.");
+        if (!repo) throw new Error("Vui lòng nhập Repository (owner/repo).");
+
+        const payload = buildSharedLibraryPayload();
+        const jsonContent = JSON.stringify(payload);
+        const apiUrl = `https://api.github.com/repos/${repo}/contents/shared_library.json`;
+        const headers = {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        };
+
+        let sha = null;
+        const headResp = await fetch(`${apiUrl}?ref=${encodeURIComponent(branch)}&t=${Date.now()}`, { headers });
+        if (headResp.ok) {
+          const existing = await headResp.json();
+          sha = existing.sha || null;
+        } else if (headResp.status !== 404) {
+          throw new Error(`Không đọc được trạng thái shared_library.json trên GitHub (HTTP ${headResp.status}).`);
+        }
+
+        const body = {
+          message: `chore(library): update shared_library.json (${payload.Overrides.length} learned overrides)`,
+          content: bytesToBase64(new TextEncoder().encode(jsonContent)),
+          branch
+        };
+        if (sha) body.sha = sha;
+
+        const putResp = await fetch(apiUrl, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify(body)
+        });
+        if (!putResp.ok) {
+          const errTxt = await putResp.text();
+          throw new Error(`Đẩy shared_library.json thất bại (${putResp.status}): ${errTxt}`);
+        }
+
+        state.sharedLibNewIds = new Set();
+        renderSharedLibrary();
+        el("sharedLibSummary").textContent = `✅ Đã đẩy ${payload.Overrides.length} mẫu dùng chung lên GitHub lúc ${new Date().toLocaleTimeString("vi-VN")}. Toàn xưởng sẽ tự đồng bộ ở lần mở tới!`;
+        showToast(`🚀 Đã đẩy ${payload.Overrides.length} mẫu thư viện học lên GitHub cho toàn xưởng!`, "success");
       }
 
       async function init() {
