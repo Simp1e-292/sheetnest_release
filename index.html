@@ -443,11 +443,17 @@
       </div>
       <div class="grid-3" style="margin-top:10px; align-items:end;">
         <div>
-          <label class="field-label">Thời hạn bản quyền</label>
-          <label style="display:flex; align-items:center; gap:8px; height:38px; cursor:pointer;">
-            <input id="chkPermanent" type="checkbox" checked style="width:18px; height:18px; accent-color:var(--accent);" />
-            <span>♾ Vĩnh viễn (Không giới hạn ngày)</span>
-          </label>
+          <label class="field-label">Thời hạn &amp; Cập nhật</label>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input id="chkPermanent" type="checkbox" checked style="width:17px; height:17px; accent-color:var(--accent);" />
+              <span>♾ Vĩnh viễn (Không giới hạn ngày)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input id="chkAllowUpdate" type="checkbox" style="width:17px; height:17px; accent-color:var(--accent);" />
+              <span>⬆ Cho phép tự động cập nhật (Auto-Update)</span>
+            </label>
+          </div>
         </div>
         <div>
           <label class="field-label" for="dtExpires">Ngày hết hạn (nếu có hạn)</label>
@@ -508,6 +514,7 @@
               <th>Tên máy / Xưởng</th>
               <th>Mã máy (HWID)</th>
               <th>Trạng thái</th>
+              <th>Cập nhật</th>
               <th>Hạn dùng</th>
               <th>Ghi chú</th>
               <th style="text-align:right;">Thao tác</th>
@@ -729,6 +736,7 @@
           machinesOut[id] = {
             name: entry.name || "",
             status: entry.status === "locked" ? "locked" : "active",
+            allowUpdate: entry.allowUpdate === true,
             expiresAtUtc: entry.expiresAtUtc || null,
             note: entry.note || "",
             addedAtUtc: entry.addedAtUtc || new Date().toISOString()
@@ -1073,11 +1081,17 @@
 
         for (const [id, m] of filtered) {
           const isLocked = (m.status || "active") === "locked";
+          const canUpdate = m.allowUpdate === true;
           const statusBadge = isLocked
             ? `<span class="badge badge-red">🔴 Đã khóa</span>`
             : `<span class="badge badge-green">🟢 Đang mở</span>`;
+          const updateBadge = canUpdate
+            ? `<span class="badge badge-cyan">⬆ Được Update</span>`
+            : `<span class="badge" style="background:rgba(148,163,184,0.12); color:#94a3b8; border-color:#475569;">⏸ Giữ bản cũ</span>`;
           const toggleLabel = isLocked ? "✅ Mở lại" : "🚫 Khóa (Kick)";
           const toggleClass = isLocked ? "btn-green" : "btn-red";
+          const updBtnLabel = canUpdate ? "⏸ Tắt Update" : "⬆ Bật Update";
+          const updBtnClass = canUpdate ? "btn-amber" : "btn-accent";
           const expText = formatExpiry(m.expiresAtUtc);
 
           // Desktop table row
@@ -1086,9 +1100,11 @@
             <td><strong>${escapeHtml(m.name || "(Chưa đặt tên)")}</strong></td>
             <td class="mono" style="color:var(--accent);">${escapeHtml(id)}</td>
             <td>${statusBadge}</td>
+            <td>${updateBadge}</td>
             <td>${escapeHtml(expText)}</td>
             <td style="color:var(--muted);">${escapeHtml(m.note || "")}</td>
             <td style="text-align:right; white-space:nowrap;">
+              <button type="button" class="btn-sm ${updBtnClass}" data-act="toggleUpdate" data-id="${escapeHtml(id)}">${updBtnLabel}</button>
               <button type="button" class="btn-sm ${toggleClass}" data-act="toggle" data-id="${escapeHtml(id)}">${toggleLabel}</button>
               <button type="button" class="btn-sm" data-act="edit" data-id="${escapeHtml(id)}">✏ Sửa</button>
               <button type="button" class="btn-sm" data-act="del" data-id="${escapeHtml(id)}">🗑 Xóa</button>
@@ -1105,12 +1121,16 @@
                 <div style="font-weight:700; font-size:14.5px;">${escapeHtml(m.name || "(Chưa đặt tên)")}</div>
                 <div class="mono" style="color:var(--accent); font-size:13px; margin-top:2px;">${escapeHtml(id)}</div>
               </div>
-              ${statusBadge}
+              <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+                ${statusBadge}
+                ${updateBadge}
+              </div>
             </div>
             <div style="font-size:12px; color:var(--muted);">
               Hạn: ${escapeHtml(expText)}${m.note ? " • " + escapeHtml(m.note) : ""}
             </div>
             <div class="m-card-actions">
+              <button type="button" class="btn-sm ${updBtnClass}" data-act="toggleUpdate" data-id="${escapeHtml(id)}">${updBtnLabel}</button>
               <button type="button" class="btn-sm ${toggleClass}" data-act="toggle" data-id="${escapeHtml(id)}">${toggleLabel}</button>
               <button type="button" class="btn-sm" data-act="edit" data-id="${escapeHtml(id)}">✏ Sửa</button>
               <button type="button" class="btn-sm" data-act="del" data-id="${escapeHtml(id)}">🗑 Xóa</button>
@@ -1126,7 +1146,18 @@
           const id = btn.getAttribute("data-id");
           if (!id || !state.machines[id]) return;
 
-          if (act === "toggle") {
+          if (act === "toggleUpdate") {
+            const nextVal = !(state.machines[id].allowUpdate === true);
+            state.machines[id].allowUpdate = nextVal;
+            saveDraftManifest();
+            renderMachines();
+            showToast(
+              nextVal
+                ? `⬆ Đã BẬT quyền Update cho máy ${id}. Bấm "🚀 KÝ SỐ & ĐẨY LÊN GITHUB" để áp dụng ngay!`
+                : `⏸ Đã TẮT quyền Update cho máy ${id}. Bấm "🚀 KÝ SỐ & ĐẨY LÊN GITHUB" để áp dụng.`,
+              "info"
+            );
+          } else if (act === "toggle") {
             const cur = state.machines[id].status === "locked" ? "locked" : "active";
             state.machines[id].status = cur === "locked" ? "active" : "locked";
             saveDraftManifest();
@@ -1160,6 +1191,7 @@
         el("txtMachineId").value = id;
         el("txtMachineName").value = entry.name || "";
         el("txtMachineNote").value = entry.note || "";
+        el("chkAllowUpdate").checked = entry.allowUpdate === true;
         if (entry.expiresAtUtc) {
           el("chkPermanent").checked = false;
           el("dtExpires").disabled = false;
@@ -1181,6 +1213,7 @@
         el("txtMachineName").value = "";
         el("txtMachineNote").value = "";
         el("chkPermanent").checked = true;
+        el("chkAllowUpdate").checked = false;
         el("dtExpires").disabled = true;
         el("dtExpires").value = "";
         el("editingBadge").style.display = "none";
@@ -1379,6 +1412,7 @@
           state.machines[id] = {
             name: name || id,
             status: existing?.status === "locked" ? "locked" : "active",
+            allowUpdate: el("chkAllowUpdate").checked,
             expiresAtUtc,
             note,
             addedAtUtc: existing?.addedAtUtc || new Date().toISOString()
