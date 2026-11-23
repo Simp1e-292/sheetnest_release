@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SheetNest Admin — Quản Lý Bản Quyền &amp; Máy Xưởng</title>
+  <style>
+    :root {
+      --bg: #131418;
+      --panel: #1C1E24;
+      --panel-alt: #16181D;
+      --border: #2D323E;
+      --text: #E8EAED;
+      --muted: #9AA0A6;
+      --accent: #00E5FF;
+      --accent-bg: #122B33;
+      --green: #00C853;
+      --green-soft: #113022;
+      --green-text: #6EE7B7;
+      --red: #EF4444;
+      --red-soft: #38171A;
+      --red-text: #FCA5A5;
+      --amber: #F59E0B;
+      --amber-soft: #382B11;
+      --amber-text: #FCD34D;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Tahoma, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      padding-bottom: 92px;
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 14px;
+    }
+
+    header.topbar {
+      background: linear-gradient(135deg, #161A22, #1E2430);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--accent);
+      letter-spacing: 0.3px;
+    }
+
+    .brand p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 767px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    label.field-label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="date"],
+    select,
+    textarea {
+      width: 100%;
+      background: #111317;
+      color: #FFFFFF;
+      border: 1px solid #363C4A;
+      border-radius: 6px;
+      padding: 9px 10px;
+      font-size: 13.5px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea.mono, input.mono {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12.5px;
+    }
+
+    button {
+      border: 1px solid #3C4354;
+      background: #282D38;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 9px 13px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s, border-color 0.15s, transform 0.05s;
+      min-height: 38px;
+    }
+
+    button:hover { border-color: var(--accent); background: #303644; }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-accent { background: #006B7D; border-color: var(--accent); color: #FFFFFF; }
+    .btn-accent:hover { background: #008299; }
+
+    .btn-green { background: #107C41; border-color: #2EA858; color: #FFFFFF; }
+    .btn-green:hover { background: #15944E; }
+
+    .btn-red { background: #7F1D1D; border-color: #EF4444; color: #FEE2E2; }
+    .btn-red:hover { background: #991B1B; }
+
+    .btn-amber { background: #78350F; border-color: #F59E0B; color: #FEF3C7; }
+    .btn-amber:hover { background: #92400E; }
+
+    .btn-sm { padding: 6px 10px; font-size: 12px; min-height: 32px; }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .badge-green { background: var(--green-soft); border-color: #10B981; color: var(--green-text); }
+    .badge-red { background: var(--red-soft); border-color: var(--red); color: var(--red-text); }
+    .badge-amber { background: var(--amber-soft); border-color: var(--amber); color: var(--amber-text); }
+    .badge-cyan { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+
+    .toast {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 9999;
+      max-width: 380px;
+      background: #1B2430;
+      border: 1px solid var(--accent);
+      color: #FFFFFF;
+      padding: 11px 14px;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+      display: none;
+      font-size: 13px;
+    }
+
+    .toast.error { border-color: var(--red); background: #2D1518; }
+    .toast.success { border-color: var(--green); background: #102B1D; }
+
+    .switch-btn {
+      width: 100%;
+      justify-content: space-between;
+      padding: 10px 14px;
+      font-size: 13.5px;
+    }
+
+    .toolbar-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .filter-btn.active {
+      background: var(--accent-bg);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Desktop table vs Mobile cards */
+    .machine-table-wrap { overflow-x: auto; }
+    table.machine-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table.machine-table th,
+    table.machine-table td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid #262A34;
+      vertical-align: middle;
+    }
+    table.machine-table th {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    table.machine-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .machine-cards { display: none; }
+    .m-card {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .m-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .m-card-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 767px) {
+      .machine-table-wrap { display: none; }
+      .machine-cards { display: block; }
+    }
+
+    .sticky-footer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 900;
+      background: rgba(19, 20, 24, 0.96);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid var(--border);
+      padding: 10px 14px;
+    }
+
+    .sticky-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sticky-inner .btn-push {
+      flex: 1 1 280px;
+      min-height: 44px;
+      font-size: 14px;
+      background: linear-gradient(135deg, #00A844, #00C853);
+      border-color: #69F0AE;
+      color: #FFFFFF;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      z-index: 9500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      width: 100%;
+      max-width: 420px;
+      background: var(--panel);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 18px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+    }
+
+    .muted-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .raw-url-box {
+      background: #101216;
+      border: 1px dashed #3A4252;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      color: var(--accent);
+      word-break: break-all;
+      margin-top: 8px;
+    }
+
+    details.collapse-card > summary {
+      cursor: pointer;
+      list-style: none;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    details.collapse-card > summary::-webkit-details-marker { display: none; }
+  </style>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <!-- PIN Unlock / Set PIN Modal -->
+  <div id="pinModal" class="modal-backdrop">
+    <div class="modal-box">
+      <h2 id="pinModalTitle" style="margin:0 0 8px; color:var(--accent); font-size:16px;">🔐 Mở khóa Cấu hình Admin</h2>
+      <p id="pinModalDesc" style="margin:0 0 12px; color:var(--muted); font-size:13px;">
+        Nhập mã PIN để giải mã Private Key ECDSA và GitHub Token đang lưu trên trình duyệt.
+      </p>
+      <label class="field-label" for="pinInput">Mã PIN bảo vệ</label>
+      <input id="pinInput" type="password" placeholder="Nhập PIN (tối thiểu 4 ký tự)..." autocomplete="current-password" />
+      <div class="pill-row" style="margin-top:14px; justify-content:flex-end;">
+        <button type="button" id="btnPinCancel" class="btn-sm" style="display:none;">Hủy</button>
+        <button type="button" id="btnPinResetVault" class="btn-sm btn-red" style="display:none;">Xóa két cũ</button>
+        <button type="button" id="btnPinConfirm" class="btn-accent">🔓 Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <header class="topbar">
+      <div class="brand">
+        <h1>🔐 SHEETNEST ADMIN PORTAL</h1>
+        <p>Quản lý máy xưởng, duyệt / Kick từ xa &amp; ký số ECDSA P-256 (Web Crypto API)</p>
+      </div>
+      <div class="topbar-actions">
+        <span id="vaultBadge" class="badge badge-amber">🔒 Chưa lưu PIN</span>
+        <button type="button" id="btnOpenUnlock" class="btn-sm">🔑 Đổi / Nhập PIN</button>
+        <button type="button" id="btnExportConfig" class="btn-sm">💾 Xuất cấu hình (File mã hóa)</button>
+        <button type="button" id="btnImportConfig" class="btn-sm">📂 Nhập cấu hình</button>
+        <input id="importConfigFile" type="file" accept=".json" style="display:none;" />
+      </div>
+    </header>
+
+    <!-- 1. Quick Machine Add / Edit Form (Mobile-First priority) -->
+    <section class="card">
+      <div class="card-title">
+        <span id="machineFormTitle">➕ Thêm / Sửa Máy Xưởng</span>
+        <span id="editingBadge" class="badge badge-cyan" style="display:none;">Đang sửa máy</span>
+      </div>
+      <div class="grid-3">
+        <div>
+          <label class="field-label" for="txtMachineId">Mã máy (HWID)</label>
+          <input id="txtMachineId" type="text" class="mono" placeholder="Dán mã Zalo: SN-XXXX-XXXX-XXXX" />
+        </div>
+        <div>
+          <label class="field-label" for="txtMachineName">Tên máy / Xưởng</label>
+          <input id="txtMachineName" type="text" placeholder="Vd: Xưởng Anh Hùng - Laser 1" />
+        </div>
+        <div>
+          <label class="field-label" for="txtMachineNote">Ghi chú</label>
+          <input id="txtMachineNote" type="text" placeholder="Vd: Máy cắt tôn 1.2mm / SĐT" />
+        </div>
+      </div>
+      <div class="grid-3" style="margin-top:10px; align-items:end;">
+        <div>
+          <label class="field-label">Thời hạn bản quyền</label>
+          <label style="display:flex; align-items:center; gap:8px; height:38px; cursor:pointer;">
+            <input id="chkPermanent" type="checkbox" checked style="width:18px; height:18px; accent-color:var(--accent);" />
+            <span>♾ Vĩnh viễn (Không giới hạn ngày)</span>
+          </label>
+        </div>
+        <div>
+          <label class="field-label" for="dtExpires">Ngày hết hạn (nếu có hạn)</label>
+          <input id="dtExpires" type="date" disabled />
+        </div>
+        <div class="pill-row" style="justify-content:flex-end;">
+          <button type="button" id="btnCancelEdit" style="display:none;">Hủy sửa</button>
+          <button type="button" id="btnSaveMachine" class="btn-accent" style="flex:1;">➕ Thêm / Lưu máy</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Global Switch + Version Gate -->
+    <section class="card">
+      <div class="card-title">
+        <span>🌐 Điều khiển toàn hệ thống</span>
+        <span id="manifestMetaBadge" class="badge badge-cyan">0 máy</span>
+      </div>
+      <div class="grid-3">
+        <div>
+          <label class="field-label">Trạng thái tổng</label>
+          <button type="button" id="btnToggleGlobal" class="switch-btn btn-green">
+            <span id="lblGlobalStatus">🟢 Hệ thống HOẠT ĐỘNG</span>
+            <span style="font-size:11px; opacity:0.9;">Bấm để đổi</span>
+          </button>
+        </div>
+        <div>
+          <label class="field-label" for="txtMinVersion">Phiên bản tối thiểu (MinVersion)</label>
+          <input id="txtMinVersion" type="text" class="mono" value="1.0.0" placeholder="Vd: 1.1.12" />
+        </div>
+        <div>
+          <label class="field-label" for="txtGlobalLockMsg">Thông báo khi khóa toàn bộ</label>
+          <input id="txtGlobalLockMsg" type="text" placeholder="Vd: Hệ thống đang bảo trì..." />
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Machine List -->
+    <section class="card">
+      <div class="card-title">
+        <span>🖥 Danh sách máy đã cấp phép</span>
+        <button type="button" id="btnPullGithub" class="btn-sm btn-accent">📥 Tải danh sách từ GitHub</button>
+      </div>
+
+      <div class="toolbar-row">
+        <input id="txtSearch" type="text" placeholder="🔍 Tìm theo tên xưởng, mã SN-..., ghi chú..." style="flex:1 1 240px;" />
+        <div class="filter-group">
+          <button type="button" class="btn-sm filter-btn active" data-filter="all">Tất cả (<span id="cntAll">0</span>)</button>
+          <button type="button" class="btn-sm filter-btn" data-filter="active">🟢 Đang mở (<span id="cntActive">0</span>)</button>
+          <button type="button" class="btn-sm filter-btn" data-filter="locked">🔴 Đã khóa (<span id="cntLocked">0</span>)</button>
+        </div>
+      </div>
+
+      <div class="machine-table-wrap">
+        <table class="machine-table">
+          <thead>
+            <tr>
+              <th>Tên máy / Xưởng</th>
+              <th>Mã máy (HWID)</th>
+              <th>Trạng thái</th>
+              <th>Hạn dùng</th>
+              <th>Ghi chú</th>
+              <th style="text-align:right;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="machineTableBody"></tbody>
+        </table>
+      </div>
+      <div id="machineCards" class="machine-cards"></div>
+      <div id="emptyMachinesMsg" class="muted-note" style="text-align:center; padding:18px 0;">
+        Chưa có máy nào. Hãy nhập Mã máy + Tên xưởng ở trên hoặc bấm "📥 Tải danh sách từ GitHub".
+      </div>
+    </section>
+
+    <!-- 4. ECDSA Key & GitHub Sync Configuration (Collapsible) -->
+    <section class="card">
+      <details id="cfgDetails" class="collapse-card" open>
+        <summary>
+          <span>⚙ Cấu hình Khóa Ký Số ECDSA P-256 &amp; GitHub Sync</span>
+          <span class="muted-note">Bấm để thu gọn / mở rộng</span>
+        </summary>
+        <div style="margin-top:12px;">
+          <div class="pill-row" style="margin-bottom:10px;">
+            <button type="button" id="btnGenerateKeys" class="btn-amber">🔑 Tạo cặp khóa ECDSA P-256 mới</button>
+            <button type="button" id="btnCopyPublicKey" class="btn-sm btn-accent">📋 Copy Public Key (dán vào LicenseConfig.cs)</button>
+            <button type="button" id="btnSaveVaultNow" class="btn-sm btn-green">🔐 Lưu cấu hình vào trình duyệt (mã hóa PIN)</button>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label class="field-label" for="txtPublicKeyPem">Public Key (SPKI PEM — công khai trong SheetNest.exe)</label>
+              <textarea id="txtPublicKeyPem" rows="5" class="mono" placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"></textarea>
+            </div>
+            <div>
+              <label class="field-label" for="txtPrivateKeyPem">Private Key (PKCS#8 PEM — CHỈ giữ bí mật của Admin)</label>
+              <textarea id="txtPrivateKeyPem" rows="5" class="mono" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
+            </div>
+          </div>
+
+          <hr style="border:0; border-top:1px solid var(--border); margin:14px 0;" />
+
+          <div class="grid-3">
+            <div>
+              <label class="field-label" for="selGithubMode">Chế độ đồng bộ GitHub</label>
+              <select id="selGithubMode">
+                <option value="repo">GitHub Repository File (Khuyên dùng)</option>
+                <option value="gist">GitHub Gist</option>
+              </select>
+            </div>
+            <div style="grid-column: span 2;">
+              <label class="field-label" for="txtGithubToken">GitHub Personal Access Token (Fine-grained PAT: Contents Read &amp; Write)</label>
+              <input id="txtGithubToken" type="password" class="mono" placeholder="github_pat_... hoặc ghp_..." />
+            </div>
+          </div>
+
+          <div id="repoConfigFields" class="grid-3" style="margin-top:10px;">
+            <div>
+              <label class="field-label" for="txtRepoOwnerRepo">Repository (owner/repo)</label>
+              <input id="txtRepoOwnerRepo" type="text" class="mono" value="Simp1e-292/sheetnest_release" placeholder="vd: Simp1e-292/sheetnest_release" />
+            </div>
+            <div>
+              <label class="field-label" for="txtRepoBranch">Branch</label>
+              <input id="txtRepoBranch" type="text" class="mono" value="main" />
+            </div>
+            <div>
+              <label class="field-label" for="txtRepoFilePath">Đường dẫn file</label>
+              <input id="txtRepoFilePath" type="text" class="mono" value="license.json" />
+            </div>
+          </div>
+
+          <div id="gistConfigFields" class="grid-2" style="margin-top:10px; display:none;">
+            <div>
+              <label class="field-label" for="txtGistId">GitHub Gist ID</label>
+              <input id="txtGistId" type="text" class="mono" placeholder="vd: a1b2c3d4e5f6..." />
+            </div>
+            <div>
+              <label class="field-label" for="txtGistFilename">Tên file trong Gist</label>
+              <input id="txtGistFilename" type="text" class="mono" value="license.json" />
+            </div>
+          </div>
+
+          <div id="rawUrlPreview" class="raw-url-box">
+            Link RAW dán vào LicenseConfig.DefaultLicenseUrl: (nhập owner/repo để hiển thị)
+          </div>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <!-- Sticky Action Footer -->
+  <div class="sticky-footer">
+    <div class="sticky-inner">
+      <button type="button" id="btnPushGithub" class="btn-push">🚀 KÝ SỐ &amp; ĐẨY LÊN GITHUB (ÁP DỤNG NGAY)</button>
+      <button type="button" id="btnDownloadJson">💾 Tải file license.json về máy</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const VAULT_STORAGE_KEY = "sheetnest_admin_vault_v1";
+      const DRAFT_STORAGE_KEY = "sheetnest_admin_manifest_draft_v1";
+
+      const state = {
+        schemaVersion: 1,
+        globalStatus: "active",
+        minVersion: "1.0.0",
+        globalLockMessage: "",
+        machines: {},
+        editingId: null,
+        filter: "all",
+        search: "",
+        lastRepoSha: null,
+        sessionPin: null
+      };
+
+      const el = (id) => document.getElementById(id);
+
+      function showToast(msg, type = "info") {
+        const box = el("toast");
+        box.textContent = msg;
+        box.className = "toast" + (type === "error" ? " error" : type === "success" ? " success" : "");
+        box.style.display = "block";
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => { box.style.display = "none"; }, 4200);
+      }
+
+      // Safe UTF-8 <-> Base64 (supports Vietnamese diacritics cleanly, never calls btoa(unicode) directly)
+      function bytesToBase64(bytes) {
+        let binary = "";
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          const chunk = bytes.subarray(i, i + chunkSize);
+          binary += String.fromCharCode.apply(null, chunk);
+        }
+        return btoa(binary);
+      }
+
+      function base64ToBytes(base64) {
+        const clean = base64.replace(/\s+/g, "");
+        const binary = atob(clean);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+      }
+
+      function normalizeMachineId(raw) {
+        if (!raw || !raw.trim()) return "";
+        let compact = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (compact.length === 14 && compact.startsWith("SN")) {
+          compact = compact.slice(2);
+        }
+        if (compact.length === 12) {
+          return `SN-${compact.slice(0, 4)}-${compact.slice(4, 8)}-${compact.slice(8, 12)}`;
+        }
+        return raw.trim().toUpperCase();
+      }
+
+      function arrayBufferToPem(buffer, label) {
+        const b64 = bytesToBase64(new Uint8Array(buffer));
+        const lines = b64.match(/.{1,64}/g) || [];
+        return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----`;
+      }
+
+      function pemToArrayBuffer(pem) {
+        const body = pem
+          .replace(/-----BEGIN [A-Z0-9 ]+-----/g, "")
+          .replace(/-----END [A-Z0-9 ]+-----/g, "")
+          .replace(/\s+/g, "");
+        if (!body) throw new Error("PEM rỗng hoặc sai định dạng.");
+        return base64ToBytes(body).buffer;
+      }
+
+      async function importPrivateKey(pkcs8Pem) {
+        return crypto.subtle.importKey(
+          "pkcs8",
+          pemToArrayBuffer(pkcs8Pem),
+          { name: "ECDSA", namedCurve: "P-256" },
+          true,
+          ["sign"]
+        );
+      }
+
+      async function importPublicKey(spkiPem) {
+        return crypto.subtle.importKey(
+          "spki",
+          pemToArrayBuffer(spkiPem),
+          { name: "ECDSA", namedCurve: "P-256" },
+          true,
+          ["verify"]
+        );
+      }
+
+      async function generateKeyPairPem() {
+        const kp = await crypto.subtle.generateKey(
+          { name: "ECDSA", namedCurve: "P-256" },
+          true,
+          ["sign", "verify"]
+        );
+        const spki = await crypto.subtle.exportKey("spki", kp.publicKey);
+        const pkcs8 = await crypto.subtle.exportKey("pkcs8", kp.privateKey);
+        return {
+          publicKeyPem: arrayBufferToPem(spki, "PUBLIC KEY"),
+          privateKeyPem: arrayBufferToPem(pkcs8, "PRIVATE KEY")
+        };
+      }
+
+      function buildManifestObject() {
+        const machinesOut = {};
+        for (const [rawId, entry] of Object.entries(state.machines)) {
+          const id = normalizeMachineId(rawId);
+          if (!id) continue;
+          machinesOut[id] = {
+            name: entry.name || "",
+            status: entry.status === "locked" ? "locked" : "active",
+            expiresAtUtc: entry.expiresAtUtc || null,
+            note: entry.note || "",
+            addedAtUtc: entry.addedAtUtc || new Date().toISOString()
+          };
+        }
+
+        return {
+          schemaVersion: 1,
+          globalStatus: state.globalStatus === "locked" ? "locked" : "active",
+          minVersion: (el("txtMinVersion").value || "1.0.0").trim(),
+          globalLockMessage: (el("txtGlobalLockMsg").value || "").trim(),
+          issuedAtUtc: new Date().toISOString(),
+          machines: machinesOut
+        };
+      }
+
+      // Sign & immediately self-verify matching C# LicenseCrypto.SignManifest / TryVerifyEnvelope 100%
+      async function signAndSelfVerifyManifest() {
+        const privatePem = el("txtPrivateKeyPem").value.trim();
+        const publicPem = el("txtPublicKeyPem").value.trim();
+        if (!privatePem || !publicPem) {
+          throw new Error("Vui lòng nhập hoặc tạo cặp khóa ECDSA P-256 trước khi ký.");
+        }
+
+        const privateKey = await importPrivateKey(privatePem);
+        const publicKey = await importPublicKey(publicPem);
+
+        const manifest = buildManifestObject();
+        const manifestJson = JSON.stringify(manifest);
+        const manifestUtf8 = new TextEncoder().encode(manifestJson);
+        const payloadBase64 = bytesToBase64(manifestUtf8);
+
+        // C# LicenseCrypto signs the UTF-8 bytes of the payloadBase64 string in IEEE P1363 format (64 bytes)
+        const signingInput = new TextEncoder().encode(payloadBase64);
+        const sigBuffer = await crypto.subtle.sign(
+          { name: "ECDSA", hash: { name: "SHA-256" } },
+          privateKey,
+          signingInput
+        );
+
+        const sigBytes = new Uint8Array(sigBuffer);
+        if (sigBytes.length !== 64) {
+          throw new Error(`Chữ ký Web Crypto có độ dài bất thường: ${sigBytes.length} byte (mong đợi 64 byte).`);
+        }
+
+        const verified = await crypto.subtle.verify(
+          { name: "ECDSA", hash: { name: "SHA-256" } },
+          publicKey,
+          sigBuffer,
+          signingInput
+        );
+        if (!verified) {
+          throw new Error("Tự xác thực chữ ký thất bại — Public Key và Private Key không khớp cặp!");
+        }
+
+        return {
+          version: 1,
+          algorithm: "ECDSA-P256-SHA256",
+          payloadBase64,
+          signatureBase64: bytesToBase64(sigBytes)
+        };
+      }
+
+      // PBKDF2 (100,000 iterations) + AES-256-GCM vault encryption
+      async function deriveAesKey(pin, saltBytes) {
+        const pinKey = await crypto.subtle.importKey(
+          "raw",
+          new TextEncoder().encode(pin),
+          "PBKDF2",
+          false,
+          ["deriveKey"]
+        );
+        return crypto.subtle.deriveKey(
+          { name: "PBKDF2", salt: saltBytes, iterations: 100000, hash: "SHA-256" },
+          pinKey,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt", "decrypt"]
+        );
+      }
+
+      async function encryptVaultWithPin(vaultData, pin) {
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveAesKey(pin, salt);
+        const plainBytes = new TextEncoder().encode(JSON.stringify(vaultData));
+        const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plainBytes);
+        return {
+          format: "sheetnest-admin-vault-v1",
+          kdf: "PBKDF2-SHA256-100000",
+          cipher: "AES-256-GCM",
+          saltBase64: bytesToBase64(salt),
+          ivBase64: bytesToBase64(iv),
+          cipherBase64: bytesToBase64(new Uint8Array(cipherBuf))
+        };
+      }
+
+      async function decryptVaultWithPin(encryptedObj, pin) {
+        if (!encryptedObj || encryptedObj.format !== "sheetnest-admin-vault-v1") {
+          throw new Error("File cấu hình không đúng định dạng SheetNest Vault.");
+        }
+        const salt = base64ToBytes(encryptedObj.saltBase64);
+        const iv = base64ToBytes(encryptedObj.ivBase64);
+        const cipherBytes = base64ToBytes(encryptedObj.cipherBase64);
+        const key = await deriveAesKey(pin, salt);
+        const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipherBytes);
+        return JSON.parse(new TextDecoder().decode(plainBuf));
+      }
+
+      function collectConfigFromInputs() {
+        return {
+          publicKeyPem: el("txtPublicKeyPem").value.trim(),
+          privateKeyPem: el("txtPrivateKeyPem").value.trim(),
+          githubMode: el("selGithubMode").value,
+          githubToken: el("txtGithubToken").value.trim(),
+          repoOwnerRepo: el("txtRepoOwnerRepo").value.trim(),
+          repoBranch: (el("txtRepoBranch").value || "main").trim(),
+          repoFilePath: (el("txtRepoFilePath").value || "license.json").trim(),
+          gistId: el("txtGistId").value.trim(),
+          gistFilename: (el("txtGistFilename").value || "license.json").trim()
+        };
+      }
+
+      function applyConfigToInputs(cfg) {
+        if (!cfg) return;
+        if (cfg.publicKeyPem !== undefined) el("txtPublicKeyPem").value = cfg.publicKeyPem;
+        if (cfg.privateKeyPem !== undefined) el("txtPrivateKeyPem").value = cfg.privateKeyPem;
+        if (cfg.githubMode) el("selGithubMode").value = cfg.githubMode;
+        if (cfg.githubToken !== undefined) el("txtGithubToken").value = cfg.githubToken;
+        if (cfg.repoOwnerRepo !== undefined) el("txtRepoOwnerRepo").value = cfg.repoOwnerRepo;
+        if (cfg.repoBranch) el("txtRepoBranch").value = cfg.repoBranch;
+        if (cfg.repoFilePath) el("txtRepoFilePath").value = cfg.repoFilePath;
+        if (cfg.gistId !== undefined) el("txtGistId").value = cfg.gistId;
+        if (cfg.gistFilename) el("txtGistFilename").value = cfg.gistFilename;
+        updateGithubModeUI();
+      }
+
+      function saveDraftManifest() {
+        try {
+          localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
+            globalStatus: state.globalStatus,
+            minVersion: el("txtMinVersion").value.trim(),
+            globalLockMessage: el("txtGlobalLockMsg").value.trim(),
+            machines: state.machines
+          }));
+        } catch (_) {}
+      }
+
+      function loadDraftManifest() {
+        try {
+          const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+          if (!raw) return;
+          const draft = JSON.parse(raw);
+          state.globalStatus = draft.globalStatus === "locked" ? "locked" : "active";
+          el("txtMinVersion").value = draft.minVersion || "1.0.0";
+          el("txtGlobalLockMsg").value = draft.globalLockMessage || "";
+          state.machines = draft.machines || {};
+        } catch (_) {}
+      }
+
+      function updateVaultBadge() {
+        const badge = el("vaultBadge");
+        const hasSaved = !!localStorage.getItem(VAULT_STORAGE_KEY);
+        if (state.sessionPin && hasSaved) {
+          badge.className = "badge badge-green";
+          badge.textContent = "🔓 Đã mở khóa PIN";
+        } else if (hasSaved) {
+          badge.className = "badge badge-amber";
+          badge.textContent = "🔒 Đang khóa";
+        } else {
+          badge.className = "badge badge-amber";
+          badge.textContent = "⚠ Chưa lưu PIN";
+        }
+      }
+
+      function promptPinModal({ title, desc, showCancel = true, showReset = false }) {
+        return new Promise((resolve) => {
+          el("pinModalTitle").textContent = title;
+          el("pinModalDesc").textContent = desc;
+          el("pinInput").value = "";
+          el("btnPinCancel").style.display = showCancel ? "inline-flex" : "none";
+          el("btnPinResetVault").style.display = showReset ? "inline-flex" : "none";
+          el("pinModal").classList.add("open");
+          setTimeout(() => el("pinInput").focus(), 50);
+
+          const cleanup = (result) => {
+            el("pinModal").classList.remove("open");
+            el("btnPinConfirm").onclick = null;
+            el("btnPinCancel").onclick = null;
+            el("btnPinResetVault").onclick = null;
+            el("pinInput").onkeydown = null;
+            resolve(result);
+          };
+
+          el("btnPinConfirm").onclick = () => {
+            const val = el("pinInput").value;
+            if (!val || val.length < 4) {
+              showToast("Mã PIN phải có ít nhất 4 ký tự.", "error");
+              return;
+            }
+            cleanup({ action: "ok", pin: val });
+          };
+          el("btnPinCancel").onclick = () => cleanup({ action: "cancel" });
+          el("btnPinResetVault").onclick = () => cleanup({ action: "reset" });
+          el("pinInput").onkeydown = (e) => {
+            if (e.key === "Enter") el("btnPinConfirm").click();
+          };
+        });
+      }
+
+      async function unlockVaultAtStartup() {
+        const raw = localStorage.getItem(VAULT_STORAGE_KEY);
+        if (!raw) {
+          updateVaultBadge();
+          return;
+        }
+        const encryptedObj = JSON.parse(raw);
+        while (true) {
+          const res = await promptPinModal({
+            title: "🔐 Nhập mã PIN Admin",
+            desc: "Mở khóa Private Key ECDSA và GitHub Token đang lưu trên trình duyệt này.",
+            showCancel: true,
+            showReset: true
+          });
+          if (res.action === "cancel") break;
+          if (res.action === "reset") {
+            if (confirm("Xóa cấu hình mã hóa cũ trên trình duyệt này?")) {
+              localStorage.removeItem(VAULT_STORAGE_KEY);
+              state.sessionPin = null;
+              updateVaultBadge();
+              showToast("Đã xóa cấu hình cũ.", "info");
+            }
+            break;
+          }
+          try {
+            const decrypted = await decryptVaultWithPin(encryptedObj, res.pin);
+            state.sessionPin = res.pin;
+            applyConfigToInputs(decrypted);
+            updateVaultBadge();
+            showToast("Đã mở khóa cấu hình Admin.", "success");
+            break;
+          } catch (_) {
+            showToast("Sai mã PIN! Vui lòng thử lại.", "error");
+          }
+        }
+      }
+
+      async function saveVaultInteractive(forceAskPin = false) {
+        let pin = state.sessionPin;
+        if (!pin || forceAskPin) {
+          const res = await promptPinModal({
+            title: "🔐 Đặt / Nhập mã PIN bảo vệ",
+            desc: "Private Key và GitHub Token sẽ được mã hóa AES-256-GCM (PBKDF2 100,000 vòng) bằng PIN này.",
+            showCancel: true,
+            showReset: false
+          });
+          if (res.action !== "ok") return false;
+          pin = res.pin;
+        }
+        const encrypted = await encryptVaultWithPin(collectConfigFromInputs(), pin);
+        localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(encrypted));
+        state.sessionPin = pin;
+        updateVaultBadge();
+        showToast("Đã lưu & mã hóa cấu hình vào trình duyệt.", "success");
+        return true;
+      }
+
+      function updateGithubModeUI() {
+        const mode = el("selGithubMode").value;
+        el("repoConfigFields").style.display = mode === "repo" ? "grid" : "none";
+        el("gistConfigFields").style.display = mode === "gist" ? "grid" : "none";
+        const preview = el("rawUrlPreview");
+        if (mode === "repo") {
+          const repo = el("txtRepoOwnerRepo").value.trim();
+          const branch = (el("txtRepoBranch").value || "main").trim();
+          const path = (el("txtRepoFilePath").value || "license.json").trim().replace(/^\/+/, "");
+          preview.textContent = repo
+            ? `Link RAW (dán vào LicenseConfig.DefaultLicenseUrl): https://raw.githubusercontent.com/${repo}/${branch}/${path}`
+            : "Link RAW (dán vào LicenseConfig.DefaultLicenseUrl): (nhập owner/repo để hiển thị)";
+        } else {
+          const gistId = el("txtGistId").value.trim();
+          const file = (el("txtGistFilename").value || "license.json").trim();
+          preview.textContent = gistId
+            ? `Link Gist RAW: https://gist.githubusercontent.com/raw/${gistId}/${file}`
+            : "Link Gist RAW: (nhập Gist ID để hiển thị)";
+        }
+      }
+
+      function renderGlobalControls() {
+        const btn = el("btnToggleGlobal");
+        const lbl = el("lblGlobalStatus");
+        if (state.globalStatus === "locked") {
+          btn.className = "switch-btn btn-red";
+          lbl.textContent = "🔴 ĐANG KHÓA TOÀN BỘ";
+        } else {
+          btn.className = "switch-btn btn-green";
+          lbl.textContent = "🟢 Hệ thống HOẠT ĐỘNG";
+        }
+      }
+
+      function formatExpiry(expiresAtUtc) {
+        if (!expiresAtUtc) return "♾ Vĩnh viễn";
+        const d = new Date(expiresAtUtc);
+        if (Number.isNaN(d.getTime())) return expiresAtUtc;
+        return d.toLocaleDateString("vi-VN");
+      }
+
+      function escapeHtml(str) {
+        return String(str || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function renderMachines() {
+        const entries = Object.entries(state.machines);
+        const total = entries.length;
+        const activeCount = entries.filter(([, m]) => (m.status || "active") === "active").length;
+        const lockedCount = total - activeCount;
+
+        el("cntAll").textContent = total;
+        el("cntActive").textContent = activeCount;
+        el("cntLocked").textContent = lockedCount;
+        el("manifestMetaBadge").textContent = `${total} máy (${activeCount} mở / ${lockedCount} khóa)`;
+
+        const q = state.search.trim().toLowerCase();
+        const filtered = entries.filter(([id, m]) => {
+          const st = (m.status || "active") === "locked" ? "locked" : "active";
+          if (state.filter !== "all" && st !== state.filter) return false;
+          if (!q) return true;
+          return id.toLowerCase().includes(q)
+            || (m.name || "").toLowerCase().includes(q)
+            || (m.note || "").toLowerCase().includes(q);
+        });
+
+        const tbody = el("machineTableBody");
+        const cards = el("machineCards");
+        tbody.innerHTML = "";
+        cards.innerHTML = "";
+        el("emptyMachinesMsg").style.display = filtered.length === 0 ? "block" : "none";
+
+        for (const [id, m] of filtered) {
+          const isLocked = (m.status || "active") === "locked";
+          const statusBadge = isLocked
+            ? `<span class="badge badge-red">🔴 Đã khóa</span>`
+            : `<span class="badge badge-green">🟢 Đang mở</span>`;
+          const toggleLabel = isLocked ? "✅ Mở lại" : "🚫 Khóa (Kick)";
+          const toggleClass = isLocked ? "btn-green" : "btn-red";
+          const expText = formatExpiry(m.expiresAtUtc);
+
+          // Desktop table row
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><strong>${escapeHtml(m.name || "(Chưa đặt tên)")}</strong></td>
+            <td class="mono" style="color:var(--accent);">${escapeHtml(id)}</td>
+            <td>${statusBadge}</td>
+            <td>${escapeHtml(expText)}</td>
+            <td style="color:var(--muted);">${escapeHtml(m.note || "")}</td>
+            <td style="text-align:right; white-space:nowrap;">
+              <button type="button" class="btn-sm ${toggleClass}" data-act="toggle" data-id="${escapeHtml(id)}">${toggleLabel}</button>
+              <button type="button" class="btn-sm" data-act="edit" data-id="${escapeHtml(id)}">✏ Sửa</button>
+              <button type="button" class="btn-sm" data-act="del" data-id="${escapeHtml(id)}">🗑 Xóa</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+
+          // Mobile touch card
+          const card = document.createElement("div");
+          card.className = "m-card";
+          card.innerHTML = `
+            <div class="m-card-head">
+              <div>
+                <div style="font-weight:700; font-size:14.5px;">${escapeHtml(m.name || "(Chưa đặt tên)")}</div>
+                <div class="mono" style="color:var(--accent); font-size:13px; margin-top:2px;">${escapeHtml(id)}</div>
+              </div>
+              ${statusBadge}
+            </div>
+            <div style="font-size:12px; color:var(--muted);">
+              Hạn: ${escapeHtml(expText)}${m.note ? " • " + escapeHtml(m.note) : ""}
+            </div>
+            <div class="m-card-actions">
+              <button type="button" class="btn-sm ${toggleClass}" data-act="toggle" data-id="${escapeHtml(id)}">${toggleLabel}</button>
+              <button type="button" class="btn-sm" data-act="edit" data-id="${escapeHtml(id)}">✏ Sửa</button>
+              <button type="button" class="btn-sm" data-act="del" data-id="${escapeHtml(id)}">🗑 Xóa</button>
+            </div>
+          `;
+          cards.appendChild(card);
+        }
+
+        const handleAction = (e) => {
+          const btn = e.target.closest("button[data-act]");
+          if (!btn) return;
+          const act = btn.getAttribute("data-act");
+          const id = btn.getAttribute("data-id");
+          if (!id || !state.machines[id]) return;
+
+          if (act === "toggle") {
+            const cur = state.machines[id].status === "locked" ? "locked" : "active";
+            state.machines[id].status = cur === "locked" ? "active" : "locked";
+            saveDraftManifest();
+            renderMachines();
+            showToast(
+              state.machines[id].status === "locked"
+                ? `Đã đánh dấu KHÓA máy ${id}. Bấm "🚀 KÝ SỐ & ĐẨY LÊN GITHUB" để áp dụng ngay!`
+                : `Đã MỞ LẠI máy ${id}. Bấm "🚀 KÝ SỐ & ĐẨY LÊN GITHUB" để áp dụng.`,
+              "info"
+            );
+          } else if (act === "edit") {
+            startEditMachine(id);
+          } else if (act === "del") {
+            if (confirm(`Xóa máy ${id} (${state.machines[id].name || ""}) khỏi danh sách?`)) {
+              delete state.machines[id];
+              if (state.editingId === id) resetMachineForm();
+              saveDraftManifest();
+              renderMachines();
+            }
+          }
+        };
+
+        tbody.onclick = handleAction;
+        cards.onclick = handleAction;
+      }
+
+      function startEditMachine(id) {
+        const entry = state.machines[id];
+        if (!entry) return;
+        state.editingId = id;
+        el("txtMachineId").value = id;
+        el("txtMachineName").value = entry.name || "";
+        el("txtMachineNote").value = entry.note || "";
+        if (entry.expiresAtUtc) {
+          el("chkPermanent").checked = false;
+          el("dtExpires").disabled = false;
+          el("dtExpires").value = entry.expiresAtUtc.slice(0, 10);
+        } else {
+          el("chkPermanent").checked = true;
+          el("dtExpires").disabled = true;
+          el("dtExpires").value = "";
+        }
+        el("editingBadge").style.display = "inline-flex";
+        el("btnCancelEdit").style.display = "inline-flex";
+        el("btnSaveMachine").textContent = "💾 Lưu thay đổi";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function resetMachineForm() {
+        state.editingId = null;
+        el("txtMachineId").value = "";
+        el("txtMachineName").value = "";
+        el("txtMachineNote").value = "";
+        el("chkPermanent").checked = true;
+        el("dtExpires").disabled = true;
+        el("dtExpires").value = "";
+        el("editingBadge").style.display = "none";
+        el("btnCancelEdit").style.display = "none";
+        el("btnSaveMachine").textContent = "➕ Thêm / Lưu máy";
+      }
+
+      // GitHub API Pull & Push
+      async function pullFromGithub() {
+        const mode = el("selGithubMode").value;
+        const token = el("txtGithubToken").value.trim();
+        const headers = { "Accept": "application/vnd.github+json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        let envelopeText = "";
+        if (mode === "repo") {
+          const repo = el("txtRepoOwnerRepo").value.trim();
+          const branch = (el("txtRepoBranch").value || "main").trim();
+          const path = (el("txtRepoFilePath").value || "license.json").trim().replace(/^\/+/, "");
+          if (!repo) throw new Error("Vui lòng nhập Repository (owner/repo).");
+
+          const url = `https://api.github.com/repos/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}&t=${Date.now()}`;
+          const resp = await fetch(url, { headers });
+          if (!resp.ok) throw new Error(`GitHub trả mã ${resp.status} khi tải ${path}.`);
+          const data = await resp.json();
+          state.lastRepoSha = data.sha || null;
+          envelopeText = new TextDecoder().decode(base64ToBytes(data.content || ""));
+        } else {
+          const gistId = el("txtGistId").value.trim();
+          const filename = (el("txtGistFilename").value || "license.json").trim();
+          if (!gistId) throw new Error("Vui lòng nhập GitHub Gist ID.");
+
+          const url = `https://api.github.com/gists/${gistId}?t=${Date.now()}`;
+          const resp = await fetch(url, { headers });
+          if (!resp.ok) throw new Error(`GitHub trả mã ${resp.status} khi tải Gist.`);
+          const data = await resp.json();
+          const fileObj = data.files && data.files[filename];
+          if (!fileObj) throw new Error(`Không thấy file "${filename}" trong Gist.`);
+          envelopeText = fileObj.content || "";
+        }
+
+        const envelope = JSON.parse(envelopeText);
+        if (!envelope || !envelope.payloadBase64) {
+          throw new Error("File trên GitHub không chứa payloadBase64 hợp lệ.");
+        }
+
+        const pubPem = el("txtPublicKeyPem").value.trim();
+        if (pubPem && envelope.signatureBase64) {
+          try {
+            const pk = await importPublicKey(pubPem);
+            const ok = await crypto.subtle.verify(
+              { name: "ECDSA", hash: { name: "SHA-256" } },
+              pk,
+              base64ToBytes(envelope.signatureBase64),
+              new TextEncoder().encode(envelope.payloadBase64)
+            );
+            if (!ok) {
+              showToast("⚠ Cảnh báo: chữ ký trên GitHub không khớp Public Key hiện tại!", "error");
+            }
+          } catch (_) {}
+        }
+
+        const manifestJson = new TextDecoder().decode(base64ToBytes(envelope.payloadBase64));
+        const manifest = JSON.parse(manifestJson);
+
+        state.globalStatus = manifest.globalStatus === "locked" ? "locked" : "active";
+        el("txtMinVersion").value = manifest.minVersion || "1.0.0";
+        el("txtGlobalLockMsg").value = manifest.globalLockMessage || "";
+
+        const normalized = {};
+        for (const [k, v] of Object.entries(manifest.machines || {})) {
+          const id = normalizeMachineId(k);
+          if (id) normalized[id] = v;
+        }
+        state.machines = normalized;
+
+        saveDraftManifest();
+        renderGlobalControls();
+        renderMachines();
+        showToast(`📥 Đã tải ${Object.keys(normalized).length} máy từ GitHub.`, "success");
+      }
+
+      async function pushToGithub(envelope) {
+        const mode = el("selGithubMode").value;
+        const token = el("txtGithubToken").value.trim();
+        if (!token) throw new Error("Vui lòng nhập GitHub Personal Access Token để đẩy file.");
+
+        const jsonContent = JSON.stringify(envelope, null, 2);
+        const headers = {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        };
+
+        if (mode === "repo") {
+          const repo = el("txtRepoOwnerRepo").value.trim();
+          const branch = (el("txtRepoBranch").value || "main").trim();
+          const path = (el("txtRepoFilePath").value || "license.json").trim().replace(/^\/+/, "");
+          if (!repo) throw new Error("Vui lòng nhập Repository (owner/repo).");
+
+          const apiUrl = `https://api.github.com/repos/${repo}/contents/${path}`;
+
+          // Always fetch latest SHA first to avoid 409 conflict when switching between PC & Phone
+          let sha = null;
+          const headResp = await fetch(`${apiUrl}?ref=${encodeURIComponent(branch)}&t=${Date.now()}`, { headers });
+          if (headResp.ok) {
+            const existing = await headResp.json();
+            sha = existing.sha || null;
+          } else if (headResp.status !== 404) {
+            throw new Error(`Không đọc được trạng thái file trên GitHub (HTTP ${headResp.status}).`);
+          }
+
+          const body = {
+            message: `chore(license): update signed manifest (${Object.keys(state.machines).length} machines)`,
+            content: bytesToBase64(new TextEncoder().encode(jsonContent)),
+            branch
+          };
+          if (sha) body.sha = sha;
+
+          const putResp = await fetch(apiUrl, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(body)
+          });
+          if (!putResp.ok) {
+            const errTxt = await putResp.text();
+            throw new Error(`Đẩy GitHub thất bại (${putResp.status}): ${errTxt}`);
+          }
+          const putData = await putResp.json();
+          state.lastRepoSha = putData.content?.sha || null;
+        } else {
+          const gistId = el("txtGistId").value.trim();
+          const filename = (el("txtGistFilename").value || "license.json").trim();
+          if (!gistId) throw new Error("Vui lòng nhập GitHub Gist ID.");
+
+          const patchResp = await fetch(`https://api.github.com/gists/${gistId}`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({
+              files: {
+                [filename]: { content: jsonContent }
+              }
+            })
+          });
+          if (!patchResp.ok) {
+            const errTxt = await patchResp.text();
+            throw new Error(`Đẩy Gist thất bại (${patchResp.status}): ${errTxt}`);
+          }
+        }
+      }
+
+      function wireEvents() {
+        el("txtMachineId").addEventListener("blur", () => {
+          el("txtMachineId").value = normalizeMachineId(el("txtMachineId").value);
+        });
+
+        el("chkPermanent").addEventListener("change", () => {
+          const perm = el("chkPermanent").checked;
+          el("dtExpires").disabled = perm;
+          if (perm) el("dtExpires").value = "";
+        });
+
+        el("btnCancelEdit").onclick = resetMachineForm;
+
+        el("btnSaveMachine").onclick = () => {
+          const id = normalizeMachineId(el("txtMachineId").value);
+          const name = el("txtMachineName").value.trim();
+          const note = el("txtMachineNote").value.trim();
+          const isPerm = el("chkPermanent").checked;
+          const dateVal = el("dtExpires").value;
+
+          if (!id) {
+            showToast("Vui lòng nhập Mã máy (HWID).", "error");
+            el("txtMachineId").focus();
+            return;
+          }
+
+          let expiresAtUtc = null;
+          if (!isPerm) {
+            if (!dateVal) {
+              showToast("Vui lòng chọn ngày hết hạn hoặc tích Vĩnh viễn.", "error");
+              return;
+            }
+            expiresAtUtc = new Date(`${dateVal}T23:59:59Z`).toISOString();
+          }
+
+          const existing = state.machines[state.editingId || id];
+          if (state.editingId && state.editingId !== id) {
+            delete state.machines[state.editingId];
+          }
+
+          state.machines[id] = {
+            name: name || id,
+            status: existing?.status === "locked" ? "locked" : "active",
+            expiresAtUtc,
+            note,
+            addedAtUtc: existing?.addedAtUtc || new Date().toISOString()
+          };
+
+          resetMachineForm();
+          saveDraftManifest();
+          renderMachines();
+          showToast(`Đã lưu máy ${id}. Bấm "🚀 KÝ SỐ & ĐẨY LÊN GITHUB" để phát hành.`, "success");
+        };
+
+        el("btnToggleGlobal").onclick = () => {
+          state.globalStatus = state.globalStatus === "locked" ? "active" : "locked";
+          saveDraftManifest();
+          renderGlobalControls();
+        };
+
+        el("txtMinVersion").addEventListener("input", saveDraftManifest);
+        el("txtGlobalLockMsg").addEventListener("input", saveDraftManifest);
+
+        el("txtSearch").addEventListener("input", () => {
+          state.search = el("txtSearch").value;
+          renderMachines();
+        });
+
+        document.querySelectorAll(".filter-btn").forEach((btn) => {
+          btn.onclick = () => {
+            document.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            state.filter = btn.getAttribute("data-filter") || "all";
+            renderMachines();
+          };
+        });
+
+        el("btnGenerateKeys").onclick = async () => {
+          if (el("txtPrivateKeyPem").value.trim() &&
+              !confirm("Đã có Private Key. Tạo cặp khóa mới sẽ làm các bản exe cũ không đọc được file mới nếu chưa cập nhật Public Key. Tiếp tục?")) {
+            return;
+          }
+          try {
+            const pair = await generateKeyPairPem();
+            el("txtPublicKeyPem").value = pair.publicKeyPem;
+            el("txtPrivateKeyPem").value = pair.privateKeyPem;
+            showToast("🔑 Đã tạo cặp khóa ECDSA P-256 mới! Hãy copy Public Key dán vào LicenseConfig.cs.", "success");
+          } catch (err) {
+            showToast("Lỗi tạo khóa: " + err.message, "error");
+          }
+        };
+
+        el("btnCopyPublicKey").onclick = async () => {
+          const pem = el("txtPublicKeyPem").value.trim();
+          if (!pem) {
+            showToast("Chưa có Public Key để copy.", "error");
+            return;
+          }
+          await navigator.clipboard.writeText(pem);
+          showToast("📋 Đã copy Public Key SPKI PEM vào Clipboard.", "success");
+        };
+
+        el("selGithubMode").onchange = updateGithubModeUI;
+        ["txtRepoOwnerRepo", "txtRepoBranch", "txtRepoFilePath", "txtGistId", "txtGistFilename"].forEach((id) => {
+          el(id).addEventListener("input", updateGithubModeUI);
+        });
+
+        el("btnOpenUnlock").onclick = () => saveVaultInteractive(true);
+        el("btnSaveVaultNow").onclick = () => saveVaultInteractive(false);
+
+        el("btnExportConfig").onclick = async () => {
+          try {
+            let pin = state.sessionPin;
+            if (!pin) {
+              const res = await promptPinModal({
+                title: "💾 Đặt PIN mã hóa file backup",
+                desc: "File xuất ra sẽ được mã hóa bằng PIN này để gửi an toàn sang điện thoại.",
+                showCancel: true
+              });
+              if (res.action !== "ok") return;
+              pin = res.pin;
+              state.sessionPin = pin;
+            }
+            const encrypted = await encryptVaultWithPin(collectConfigFromInputs(), pin);
+            const blob = new Blob([JSON.stringify(encrypted, null, 2)], { type: "application/json" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "sheetnest-admin-vault.enc.json";
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast("💾 Đã tải file cấu hình mã hóa về máy.", "success");
+          } catch (err) {
+            showToast("Lỗi xuất cấu hình: " + err.message, "error");
+          }
+        };
+
+        el("btnImportConfig").onclick = () => el("importConfigFile").click();
+        el("importConfigFile").onchange = async (e) => {
+          const file = e.target.files && e.target.files[0];
+          e.target.value = "";
+          if (!file) return;
+          try {
+            const encryptedObj = JSON.parse(await file.text());
+            const res = await promptPinModal({
+              title: "📂 Nhập PIN giải mã file cấu hình",
+              desc: "Nhập mã PIN đã dùng khi xuất file cấu hình.",
+              showCancel: true
+            });
+            if (res.action !== "ok") return;
+            const decrypted = await decryptVaultWithPin(encryptedObj, res.pin);
+            applyConfigToInputs(decrypted);
+            localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(encryptedObj));
+            state.sessionPin = res.pin;
+            updateVaultBadge();
+            showToast("📂 Đã nhập & mở khóa cấu hình thành công!", "success");
+          } catch (err) {
+            showToast("Giải mã thất bại (sai PIN hoặc sai file): " + err.message, "error");
+          }
+        };
+
+        el("btnPullGithub").onclick = async () => {
+          el("btnPullGithub").disabled = true;
+          try {
+            await pullFromGithub();
+          } catch (err) {
+            showToast("Lỗi tải từ GitHub: " + err.message, "error");
+          } finally {
+            el("btnPullGithub").disabled = false;
+          }
+        };
+
+        el("btnDownloadJson").onclick = async () => {
+          try {
+            const envelope = await signAndSelfVerifyManifest();
+            const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: "application/json" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "license.json";
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast("💾 Đã ký số & tải file license.json về máy.", "success");
+          } catch (err) {
+            showToast("Lỗi ký số: " + err.message, "error");
+          }
+        };
+
+        el("btnPushGithub").onclick = async () => {
+          const btn = el("btnPushGithub");
+          btn.disabled = true;
+          const prevText = btn.textContent;
+          btn.textContent = "⏳ Đang ký số & đẩy lên GitHub...";
+          try {
+            const envelope = await signAndSelfVerifyManifest();
+            await pushToGithub(envelope);
+            saveDraftManifest();
+            showToast("🚀 ĐÃ KÝ SỐ & ĐẨY LÊN GITHUB THÀNH CÔNG! Có hiệu lực ngay.", "success");
+          } catch (err) {
+            showToast("Lỗi đẩy lên GitHub: " + err.message, "error");
+          } finally {
+            btn.disabled = false;
+            btn.textContent = prevText;
+          }
+        };
+      }
+
+      async function init() {
+        loadDraftManifest();
+        wireEvents();
+        updateGithubModeUI();
+        renderGlobalControls();
+        renderMachines();
+        updateVaultBadge();
+        await unlockVaultAtStartup();
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
