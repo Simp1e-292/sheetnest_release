@@ -384,6 +384,7 @@
       justify-content: space-between;
     }
     details.collapse-card > summary::-webkit-details-marker { display: none; }
+    .token-masked { -webkit-text-security: disc; }
   </style>
 </head>
 <body>
@@ -646,7 +647,7 @@
             <div style="grid-column: span 2;">
               <label class="field-label" for="txtGithubToken">GitHub Personal Access Token (Fine-grained PAT: Contents Read &amp; Write)</label>
               <div style="display:flex; gap:6px;">
-                <input id="txtGithubToken" type="password" class="mono" autocomplete="new-password" spellcheck="false" placeholder="github_pat_... hoặc ghp_..." style="flex:1;" />
+                <input id="txtGithubToken" name="sn_api_pat_no_autofill" type="text" class="mono token-masked" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="github_pat_... hoặc ghp_..." style="flex:1;" />
                 <button type="button" id="btnToggleTokenVis" class="btn-sm" title="Hiện/ẩn token để kiểm tra">👁 Hiện</button>
               </div>
             </div>
@@ -1066,6 +1067,15 @@
             showToast("Sai mã PIN! Vui lòng thử lại.", "error");
           }
         }
+      }
+
+      async function autoSaveVaultIfUnlocked() {
+        if (!state.sessionPin) return;
+        try {
+          const encrypted = await encryptVaultWithPin(collectConfigFromInputs(), state.sessionPin);
+          localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(encrypted));
+          updateVaultBadge();
+        } catch (_) {}
       }
 
       async function saveVaultInteractive(forceAskPin = false) {
@@ -1582,10 +1592,15 @@
         el("selGithubMode").onchange = updateGithubModeUI;
         el("btnToggleTokenVis").onclick = () => {
           const inp = el("txtGithubToken");
-          const show = inp.type === "password";
-          inp.type = show ? "text" : "password";
-          el("btnToggleTokenVis").textContent = show ? "🙈 Ẩn" : "👁 Hiện";
+          const isMasked = inp.classList.toggle("token-masked");
+          el("btnToggleTokenVis").textContent = isMasked ? "👁 Hiện" : "🙈 Ẩn";
         };
+        el("txtGithubToken").addEventListener("change", () => {
+          const val = el("txtGithubToken").value.trim();
+          if (/^(github_pat_|ghp_|gho_|ghu_)/.test(val)) {
+            autoSaveVaultIfUnlocked();
+          }
+        });
         ["txtRepoOwnerRepo", "txtRepoBranch", "txtRepoFilePath", "txtGistId", "txtGistFilename"].forEach((id) => {
           el(id).addEventListener("input", updateGithubModeUI);
         });
@@ -1678,7 +1693,8 @@
             const envelope = await signAndSelfVerifyManifest();
             await pushToGithub(envelope);
             saveDraftManifest();
-            showToast("🚀 ĐÃ KÝ SỐ & ĐẨY LÊN GITHUB THÀNH CÔNG! Có hiệu lực ngay.", "success");
+            await autoSaveVaultIfUnlocked();
+            showToast("🚀 ĐÃ KÝ SỐ & ĐẨY LÊN GITHUB THÀNH CÔNG! Đã tự lưu Token vào két PIN.", "success");
           } catch (err) {
             showToast("Lỗi đẩy lên GitHub: " + err.message, "error");
           } finally {
