@@ -453,6 +453,10 @@
               <input id="chkAllowUpdate" type="checkbox" style="width:17px; height:17px; accent-color:var(--accent);" />
               <span>⬆ Cho phép tự động cập nhật (Auto-Update)</span>
             </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input id="chkAutoApproveLib" type="checkbox" style="width:17px; height:17px; accent-color:var(--accent);" />
+              <span>⚡ Tự gộp dữ liệu học thẳng (không cần duyệt — dành cho máy tin cậy)</span>
+            </label>
           </div>
         </div>
         <div>
@@ -514,7 +518,7 @@
               <th>Tên máy / Xưởng</th>
               <th>Mã máy (HWID)</th>
               <th>Trạng thái</th>
-              <th>Cập nhật</th>
+              <th>Cập nhật / Học nhóm</th>
               <th>Hạn dùng</th>
               <th>Ghi chú</th>
               <th style="text-align:right;">Thao tác</th>
@@ -533,12 +537,41 @@
     <section class="card">
       <details id="sharedLibDetails" class="collapse-card">
         <summary>
-          <span>🧠 Quản lý &amp; Gộp Dữ liệu học chung toàn xưởng (<span id="sharedLibCountBadge">0 mẫu</span>)</span>
+          <span>🧠 Quản lý &amp; Gộp Dữ liệu học chung toàn xưởng (<span id="sharedLibCountBadge">0 mẫu</span> • <span id="pendingLibCountBadge" style="color:var(--amber);">0 chờ duyệt</span>)</span>
           <span class="muted-note">Bấm để mở rộng / thu gọn</span>
         </summary>
         <div style="margin-top:12px;">
+          <!-- Pending Inbox from Cloudflare Worker (pending_library.json) -->
+          <div style="background:var(--panel-alt); border:1px solid #3A4252; border-radius:8px; padding:12px; margin-bottom:14px;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+              <strong style="color:var(--amber);">📬 Hộp thư mẫu máy xưởng tự gửi về (Chờ bạn duyệt)</strong>
+              <div class="pill-row">
+                <button type="button" id="btnPullPendingLib" class="btn-sm btn-amber">📬 Kiểm tra hộp thư mẫu mới</button>
+                <button type="button" id="btnApproveAllPending" class="btn-sm btn-green" style="display:none;">✅ Duyệt TẤT CẢ &amp; Đẩy toàn xưởng</button>
+              </div>
+            </div>
+            <div id="pendingLibSummary" class="muted-note" style="margin-bottom:8px;">
+              Các máy xưởng ở chế độ <code>📬 Chờ duyệt</code> khi bấm chuyển nhóm lưu nhớ sẽ tự gửi ngầm về đây (không cần Zalo).
+            </div>
+            <div id="pendingLibTableWrap" class="machine-table-wrap" style="max-height:260px; overflow-y:auto; display:none;">
+              <table class="machine-table">
+                <thead>
+                  <tr>
+                    <th>Nhóm chi tiết</th>
+                    <th>Vật liệu</th>
+                    <th>Kích thước S × L (mm)</th>
+                    <th>Chấn / Lỗ</th>
+                    <th>Máy gửi</th>
+                    <th style="text-align:right;">Duyệt</th>
+                  </tr>
+                </thead>
+                <tbody id="pendingLibTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
           <p class="muted-note" style="margin:0 0 10px;">
-            Gộp file <code>.json</code> xuất từ các máy xưởng (<code>Cài đặt → Xuất dữ liệu đã học</code>), lọc trùng, duyệt bỏ mẫu chọn nhầm rồi đẩy lên GitHub (<code>shared_library.json</code>) để <b>tất cả máy xưởng tự đồng bộ ngay</b> mà không cần cài lại phần mềm.
+            Thư viện dùng chung trên GitHub (<code>shared_library.json</code>) — mọi máy xưởng tự tải về mỗi khi mở phần mềm. Bạn cũng có thể gộp thêm file <code>.json</code> ngoại tuyến nếu cần.
           </p>
           <div class="pill-row" style="margin-bottom:10px;">
             <button type="button" id="btnPullSharedLib" class="btn-sm btn-accent">📥 Tải thư viện chung từ GitHub</button>
@@ -681,7 +714,8 @@
         sessionPin: null,
         sharedLibOverrides: [],
         sharedLibNewIds: new Set(),
-        sharedLibSearch: ""
+        sharedLibSearch: "",
+        pendingLibOverrides: []
       };
 
       const el = (id) => document.getElementById(id);
@@ -786,6 +820,7 @@
             name: entry.name || "",
             status: entry.status === "locked" ? "locked" : "active",
             allowUpdate: entry.allowUpdate === true,
+            autoApproveLibrary: entry.autoApproveLibrary === true,
             expiresAtUtc: entry.expiresAtUtc || null,
             note: entry.note || "",
             addedAtUtc: entry.addedAtUtc || new Date().toISOString()
@@ -1131,16 +1166,22 @@
         for (const [id, m] of filtered) {
           const isLocked = (m.status || "active") === "locked";
           const canUpdate = m.allowUpdate === true;
+          const autoApprove = m.autoApproveLibrary === true;
           const statusBadge = isLocked
             ? `<span class="badge badge-red">🔴 Đã khóa</span>`
             : `<span class="badge badge-green">🟢 Đang mở</span>`;
           const updateBadge = canUpdate
             ? `<span class="badge badge-cyan">⬆ Được Update</span>`
             : `<span class="badge" style="background:rgba(148,163,184,0.12); color:#94a3b8; border-color:#475569;">⏸ Giữ bản cũ</span>`;
+          const libBadge = autoApprove
+            ? `<span class="badge badge-green">⚡ Tự gộp học</span>`
+            : `<span class="badge badge-amber">📬 Chờ duyệt</span>`;
           const toggleLabel = isLocked ? "✅ Mở lại" : "🚫 Khóa (Kick)";
           const toggleClass = isLocked ? "btn-green" : "btn-red";
           const updBtnLabel = canUpdate ? "⏸ Tắt Update" : "⬆ Bật Update";
           const updBtnClass = canUpdate ? "btn-amber" : "btn-accent";
+          const libBtnLabel = autoApprove ? "📬 Đổi Chờ duyệt" : "⚡ Bật Tự gộp";
+          const libBtnClass = autoApprove ? "btn-amber" : "btn-green";
           const expText = formatExpiry(m.expiresAtUtc);
 
           // Desktop table row
@@ -1149,11 +1190,12 @@
             <td><strong>${escapeHtml(m.name || "(Chưa đặt tên)")}</strong></td>
             <td class="mono" style="color:var(--accent);">${escapeHtml(id)}</td>
             <td>${statusBadge}</td>
-            <td>${updateBadge}</td>
+            <td><div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">${updateBadge}${libBadge}</div></td>
             <td>${escapeHtml(expText)}</td>
             <td style="color:var(--muted);">${escapeHtml(m.note || "")}</td>
             <td style="text-align:right; white-space:nowrap;">
               <button type="button" class="btn-sm ${updBtnClass}" data-act="toggleUpdate" data-id="${escapeHtml(id)}">${updBtnLabel}</button>
+              <button type="button" class="btn-sm ${libBtnClass}" data-act="toggleAutoApprove" data-id="${escapeHtml(id)}">${libBtnLabel}</button>
               <button type="button" class="btn-sm ${toggleClass}" data-act="toggle" data-id="${escapeHtml(id)}">${toggleLabel}</button>
               <button type="button" class="btn-sm" data-act="edit" data-id="${escapeHtml(id)}">✏ Sửa</button>
               <button type="button" class="btn-sm" data-act="del" data-id="${escapeHtml(id)}">🗑 Xóa</button>
@@ -1173,6 +1215,7 @@
               <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
                 ${statusBadge}
                 ${updateBadge}
+                ${libBadge}
               </div>
             </div>
             <div style="font-size:12px; color:var(--muted);">
@@ -1180,6 +1223,7 @@
             </div>
             <div class="m-card-actions">
               <button type="button" class="btn-sm ${updBtnClass}" data-act="toggleUpdate" data-id="${escapeHtml(id)}">${updBtnLabel}</button>
+              <button type="button" class="btn-sm ${libBtnClass}" data-act="toggleAutoApprove" data-id="${escapeHtml(id)}">${libBtnLabel}</button>
               <button type="button" class="btn-sm ${toggleClass}" data-act="toggle" data-id="${escapeHtml(id)}">${toggleLabel}</button>
               <button type="button" class="btn-sm" data-act="edit" data-id="${escapeHtml(id)}">✏ Sửa</button>
               <button type="button" class="btn-sm" data-act="del" data-id="${escapeHtml(id)}">🗑 Xóa</button>
@@ -1204,6 +1248,17 @@
               nextVal
                 ? `⬆ Đã BẬT quyền Update cho máy ${id}. Bấm "🚀 KÝ SỐ & ĐẨY LÊN GITHUB" để áp dụng ngay!`
                 : `⏸ Đã TẮT quyền Update cho máy ${id}. Bấm "🚀 KÝ SỐ & ĐẨY LÊN GITHUB" để áp dụng.`,
+              "info"
+            );
+          } else if (act === "toggleAutoApprove") {
+            const nextVal = !(state.machines[id].autoApproveLibrary === true);
+            state.machines[id].autoApproveLibrary = nextVal;
+            saveDraftManifest();
+            renderMachines();
+            showToast(
+              nextVal
+                ? `⚡ Máy ${id} sẽ TỰ GỘP dữ liệu học thẳng vào thư viện chung! Bấm "🚀 KÝ SỐ & ĐẨY LÊN GITHUB" để áp dụng.`
+                : `📬 Máy ${id} sẽ gửi mẫu mới vào Hộp thư chờ duyệt. Bấm "🚀 KÝ SỐ & ĐẨY LÊN GITHUB" để áp dụng.`,
               "info"
             );
           } else if (act === "toggle") {
@@ -1241,6 +1296,7 @@
         el("txtMachineName").value = entry.name || "";
         el("txtMachineNote").value = entry.note || "";
         el("chkAllowUpdate").checked = entry.allowUpdate === true;
+        el("chkAutoApproveLib").checked = entry.autoApproveLibrary === true;
         if (entry.expiresAtUtc) {
           el("chkPermanent").checked = false;
           el("dtExpires").disabled = false;
@@ -1263,6 +1319,7 @@
         el("txtMachineNote").value = "";
         el("chkPermanent").checked = true;
         el("chkAllowUpdate").checked = false;
+        el("chkAutoApproveLib").checked = false;
         el("dtExpires").disabled = true;
         el("dtExpires").value = "";
         el("editingBadge").style.display = "none";
@@ -1462,6 +1519,7 @@
             name: name || id,
             status: existing?.status === "locked" ? "locked" : "active",
             allowUpdate: el("chkAllowUpdate").checked,
+            autoApproveLibrary: el("chkAutoApproveLib").checked,
             expiresAtUtc,
             note,
             addedAtUtc: existing?.addedAtUtc || new Date().toISOString()
@@ -1629,7 +1687,68 @@
           }
         };
 
-        // --- Shared Learned Library (shared_library.json) ---
+        // --- Shared Learned Library (shared_library.json) & Pending Inbox (pending_library.json) ---
+        el("btnPullPendingLib").onclick = async () => {
+          const btn = el("btnPullPendingLib");
+          btn.disabled = true;
+          try {
+            await pullPendingLibraryFromGithub();
+          } catch (err) {
+            showToast("Lỗi kiểm tra hộp thư mẫu mới: " + err.message, "error");
+          } finally {
+            btn.disabled = false;
+          }
+        };
+
+        el("btnApproveAllPending").onclick = async () => {
+          if (state.pendingLibOverrides.length === 0) return;
+          if (!confirm(`Duyệt toàn bộ ${state.pendingLibOverrides.length} mẫu đang chờ và đẩy lên thư viện chung cho tất cả các máy xưởng?`)) return;
+          const btn = el("btnApproveAllPending");
+          btn.disabled = true;
+          try {
+            const allIndices = state.pendingLibOverrides.map((_, idx) => idx);
+            await approvePendingIndices(allIndices);
+          } catch (err) {
+            showToast("Lỗi duyệt mẫu chờ: " + err.message, "error");
+          } finally {
+            btn.disabled = false;
+          }
+        };
+
+        el("pendingLibTableBody").addEventListener("click", async (e) => {
+          const approveBtn = e.target.closest("button[data-pending-approve]");
+          if (approveBtn) {
+            const idx = Number(approveBtn.getAttribute("data-pending-approve"));
+            if (!Number.isInteger(idx) || idx < 0 || idx >= state.pendingLibOverrides.length) return;
+            approveBtn.disabled = true;
+            try {
+              await approvePendingIndices([idx]);
+            } catch (err) {
+              showToast("Lỗi duyệt mẫu: " + err.message, "error");
+              approveBtn.disabled = false;
+            }
+            return;
+          }
+
+          const delBtn = e.target.closest("button[data-pending-del]");
+          if (delBtn) {
+            const idx = Number(delBtn.getAttribute("data-pending-del"));
+            if (!Number.isInteger(idx) || idx < 0 || idx >= state.pendingLibOverrides.length) return;
+            const item = state.pendingLibOverrides[idx];
+            if (!confirm(`Từ chối và xóa mẫu "${item.FamilyName || "Mẫu"}" từ ${item.SourceMachine || "máy xưởng"}?`)) return;
+            delBtn.disabled = true;
+            try {
+              state.pendingLibOverrides.splice(idx, 1);
+              await pushPendingLibraryToGithub();
+              renderPendingLibrary();
+              showToast("🗑 Đã xóa mẫu sai khỏi hộp thư chờ.", "info");
+            } catch (err) {
+              showToast("Lỗi xóa mẫu khỏi hộp thư: " + err.message, "error");
+              delBtn.disabled = false;
+            }
+          }
+        });
+
         el("txtSharedLibSearch").addEventListener("input", () => {
           state.sharedLibSearch = el("txtSharedLibSearch").value.trim().toLowerCase();
           renderSharedLibrary();
@@ -1880,6 +1999,139 @@
         renderSharedLibrary();
         el("sharedLibSummary").textContent = `✅ Đã đẩy ${payload.Overrides.length} mẫu dùng chung lên GitHub lúc ${new Date().toLocaleTimeString("vi-VN")}. Toàn xưởng sẽ tự đồng bộ ở lần mở tới!`;
         showToast(`🚀 Đã đẩy ${payload.Overrides.length} mẫu thư viện học lên GitHub cho toàn xưởng!`, "success");
+      }
+
+      function renderPendingLibrary() {
+        const list = state.pendingLibOverrides || [];
+        el("pendingLibCountBadge").textContent = `${list.length} chờ duyệt`;
+        el("btnApproveAllPending").style.display = list.length > 0 ? "inline-flex" : "none";
+        el("pendingLibTableWrap").style.display = list.length > 0 ? "block" : "none";
+
+        const tbody = el("pendingLibTableBody");
+        tbody.innerHTML = list.map((item, idx) => {
+          const holesCount = Array.isArray(item.HoleSignatures) ? item.HoleSignatures.length : 0;
+          return `
+            <tr>
+              <td><strong>${escapeHtml(item.FamilyName || "(Chưa đặt tên)")}</strong></td>
+              <td><span class="badge badge-amber">${escapeHtml(item.MaterialKey || (item.ThicknessMm ? item.ThicknessMm + "mm" : "—"))}</span></td>
+              <td class="mono">${Number(item.WidthS || 0).toFixed(1)} × ${Number(item.SampleLengthL || 0).toFixed(1)}</td>
+              <td style="font-size:12px; color:var(--muted);">${Number(item.BendCount || 0)} chấn / ${holesCount} nhóm lỗ</td>
+              <td style="font-size:12px;"><span class="badge badge-cyan">${escapeHtml(item.SourceMachine || "Máy xưởng")}</span></td>
+              <td style="text-align:right; white-space:nowrap;">
+                <button type="button" class="btn-sm btn-green" data-pending-approve="${idx}">✅ Duyệt</button>
+                <button type="button" class="btn-sm btn-red" data-pending-del="${idx}">🗑 Bỏ</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      async function pullPendingLibraryFromGithub() {
+        const repo = el("txtRepoOwnerRepo").value.trim();
+        const branch = (el("txtRepoBranch").value || "main").trim();
+        const token = el("txtGithubToken").value.trim();
+        if (!repo) throw new Error("Vui lòng nhập Repository (owner/repo) trong phần Cấu hình.");
+
+        const apiUrl = `https://api.github.com/repos/${repo}/contents/pending_library.json?ref=${encodeURIComponent(branch)}&t=${Date.now()}`;
+        const headers = { "Accept": "application/vnd.github.raw+json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const resp = await fetch(apiUrl, { headers, cache: "no-store" });
+        if (resp.status === 404) {
+          state.pendingLibOverrides = [];
+          renderPendingLibrary();
+          el("pendingLibSummary").textContent = "✅ Hộp thư sạch — hiện chưa có mẫu mới nào từ máy xưởng gửi về.";
+          showToast("Hộp thư chờ trống (0 mẫu mới).", "info");
+          return;
+        }
+        if (!resp.ok) {
+          throw new Error(`Không tải được pending_library.json (HTTP ${resp.status}).`);
+        }
+
+        const parsed = await resp.json();
+        const overrides = Array.isArray(parsed.Overrides) ? parsed.Overrides : (Array.isArray(parsed.overrides) ? parsed.overrides : []);
+        state.pendingLibOverrides = overrides;
+        renderPendingLibrary();
+        if (overrides.length === 0) {
+          el("pendingLibSummary").textContent = "✅ Hộp thư sạch — hiện chưa có mẫu mới nào chờ duyệt.";
+          showToast("Hộp thư chờ trống (0 mẫu mới).", "info");
+        } else {
+          el("pendingLibSummary").textContent = `📬 Có ${overrides.length} mẫu mới từ máy xưởng gửi về. Xem nhanh rồi bấm "✅ Duyệt TẤT CẢ & Đẩy toàn xưởng" (hoặc bấm 🗑 Bỏ nếu thợ chọn nhầm).`;
+          showToast(`📬 Có ${overrides.length} mẫu mới chờ bạn duyệt!`, "success");
+        }
+      }
+
+      async function pushPendingLibraryToGithub() {
+        const token = el("txtGithubToken").value.trim();
+        const repo = el("txtRepoOwnerRepo").value.trim();
+        const branch = (el("txtRepoBranch").value || "main").trim();
+        if (!token) throw new Error("Vui lòng nhập GitHub Personal Access Token.");
+        if (!repo) throw new Error("Vui lòng nhập Repository (owner/repo).");
+
+        const payload = {
+          Version: 1,
+          UpdatedAtUtc: new Date().toISOString(),
+          Overrides: state.pendingLibOverrides || []
+        };
+        const apiUrl = `https://api.github.com/repos/${repo}/contents/pending_library.json`;
+        const headers = {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        };
+
+        let sha = null;
+        const headResp = await fetch(`${apiUrl}?ref=${encodeURIComponent(branch)}&t=${Date.now()}`, { headers });
+        if (headResp.ok) {
+          const existing = await headResp.json();
+          sha = existing.sha || null;
+        } else if (headResp.status !== 404) {
+          throw new Error(`Không đọc được trạng thái pending_library.json (HTTP ${headResp.status}).`);
+        }
+
+        const body = {
+          message: `chore(library): update pending_library.json (${payload.Overrides.length} remaining)`,
+          content: bytesToBase64(new TextEncoder().encode(JSON.stringify(payload))),
+          branch
+        };
+        if (sha) body.sha = sha;
+
+        const putResp = await fetch(apiUrl, { method: "PUT", headers, body: JSON.stringify(body) });
+        if (!putResp.ok) {
+          const errTxt = await putResp.text();
+          throw new Error(`Cập nhật pending_library.json thất bại (${putResp.status}): ${errTxt}`);
+        }
+      }
+
+      async function approvePendingIndices(indices) {
+        if (!indices || indices.length === 0) return;
+        // Always ensure we have the latest shared_library.json before merging so we never drop existing rules!
+        await pullSharedLibraryFromGithub();
+
+        const idxSet = new Set(indices);
+        const approved = [];
+        const remaining = [];
+        for (let i = 0; i < state.pendingLibOverrides.length; i++) {
+          if (idxSet.has(i)) approved.push(state.pendingLibOverrides[i]);
+          else remaining.push(state.pendingLibOverrides[i]);
+        }
+
+        let added = 0;
+        for (const rawItem of approved) {
+          const item = Object.assign({}, rawItem, { IsUserOverride: true });
+          // Replace any older shared rule with the exact same geometry so approved rule wins cleanly
+          state.sharedLibOverrides = state.sharedLibOverrides.filter((ex) => !isSameSharedSig(ex, item));
+          state.sharedLibOverrides.unshift(item);
+          added++;
+        }
+
+        await pushSharedLibraryToGithub();
+        state.pendingLibOverrides = remaining;
+        await pushPendingLibraryToGithub();
+        renderPendingLibrary();
+        el("pendingLibSummary").textContent = remaining.length === 0
+          ? `✅ Đã duyệt & đẩy ${added} mẫu lên toàn xưởng! Hộp thư hiện sạch.`
+          : `✅ Đã duyệt ${added} mẫu. Còn lại ${remaining.length} mẫu chờ duyệt.`;
       }
 
       async function init() {
